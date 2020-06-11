@@ -14,9 +14,9 @@ def prepare_image_PIL(im):
     im = np.transpose(im, (2, 0, 1)) # (H x W x C) to (C x H x W)
     return im
 
-def prepare_image_cv2(im):
+def prepare_image_cv2(im, size):
     # im -= np.array((104.00698793,116.66876762,122.67891434))
-    im = cv2.resize(im, dsize=(1024, 1024), interpolation=cv2.INTER_LINEAR)
+    im = cv2.resize(im, dsize=(size, size), interpolation=cv2.INTER_LINEAR)
     im = np.transpose(im, (2, 0, 1)) # (H x W x C) to (C x H x W)
     return im
 
@@ -25,8 +25,9 @@ class BSDS_RCFLoader(data.Dataset):
     """
     Dataloader BSDS500
     """
-    def __init__(self, root='data/HED-BSDS_PASCAL', split='train', transform=False):
+    def __init__(self, root='data/HED-BSDS_PASCAL', split='train', transform=False, size=256):
         self.root = root
+        self.size = size
         self.split = split
         self.transform = transform
         self.bsds_root = join(root, 'HED-BSDS')
@@ -53,7 +54,7 @@ class BSDS_RCFLoader(data.Dataset):
             if lb.ndim == 3:
                 lb = np.squeeze(lb[:, :, 0])
             assert lb.ndim == 2
-            lb = cv2.resize(lb, (256, 256), interpolation=cv2.INTER_LINEAR)
+            lb = cv2.resize(lb, (self.size, self.size), interpolation=cv2.INTER_LINEAR)
             # print('max after', np.max(lb))
             # Image.fromarray(lb.astype(np.uint8)).save('debug/{}-resized-label.png'.format(r))
 
@@ -64,6 +65,7 @@ class BSDS_RCFLoader(data.Dataset):
             lb[np.logical_and(lb>0, lb<64)] = 2
             lb[lb >= 64] = 1
             # lb[lb >= 128] = 1
+            lb /= 2
 
         else:
             img_file = self.filelist[index].rstrip()
@@ -71,7 +73,8 @@ class BSDS_RCFLoader(data.Dataset):
         if self.split == "train":
             img = np.array(cv2.imread(join(self.root, img_file)), dtype=np.float32)
             # Image.fromarray(img.astype(np.uint8)).save('debug/{}-img.jpg'.format(r))
-            img = prepare_image_cv2(img)
+            img = prepare_image_cv2(img, size=self.size)
+            img /= 255
             return img, lb
         else:
             original_img = np.array(cv2.imread(join(self.bsds_root, img_file)), dtype=np.float32)

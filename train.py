@@ -54,9 +54,22 @@ def cross_entropy_loss_RCF(prediction, label):
             prediction.float(),label.float(), weight=mask, reduce=False)
     return torch.sum(cost) / (num_negative + num_positive)
 
+def inv_dice_loss(pred, targ):
+    eps = 1e-7
+    p = pred.view(-1)
+    t = targ.view(-1)
+    res = (p**2).sum() + (t**2).sum() + eps
+    res /= 2 * (p*t).sum() + eps
+    return res
+
+def crisp_loss(pred,targ, a=1., b=.001):
+    CE_loss = cross_entropy_loss_RCF(pred, targ)
+    D_loss = inv_dice_loss(pred,targ)
+    loss = a * D_loss + b * CE_loss
+    return loss
 
 model.train()
-total_epoch = 30
+total_epoch = 100
 each_epoch_iter = len(train_loader)
 total_iter = total_epoch * each_epoch_iter
 
@@ -69,10 +82,12 @@ for epoch in range(total_epoch):
     for i, (image, label) in enumerate(train_loader):
         cnt += 1
         optim = make_optim(model, adjust_lr(init_lr, cnt, total_iter))
+        
         image, label = image.cuda(), label.cuda()
         outs = model(image, label.size()[2:])
         # total_loss = 0
-        total_loss = cross_entropy_loss_RCF(outs[-1], label)
+        #total_loss = cross_entropy_loss_RCF(outs[-1], label)
+        total_loss = crisp_loss(outs[-1], label)
         # for each in outs:
         #     loss = cross_entropy_loss_RCF(each, label)
         #     total_loss += loss
