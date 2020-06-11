@@ -65,7 +65,6 @@ class BSDS_RCFLoader(data.Dataset):
             lb[np.logical_and(lb>0, lb<64)] = 2
             lb[lb >= 64] = 1
             # lb[lb >= 128] = 1
-            lb /= 2
 
         else:
             img_file = self.filelist[index].rstrip()
